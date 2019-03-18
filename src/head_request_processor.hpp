@@ -14,12 +14,12 @@ class HEADRequestProcessor final
 {
 public:
     using HTTPRequestProcessor::HTTPRequestProcessor;
-    
+
     ~HEADRequestProcessor();
 
     void start();
     void stop() noexcept;
-    
+
 private:
     void send_response();
 

@@ -74,36 +74,36 @@ void HTTPRequestReader::morph_into_request() {
     do {
         line.clear();
         auto line_end = buffer_.find(CRLF);
-        
+
         if (line_end == 0) {
             buffer_.erase(0, std::strlen(CRLF));
         }
         else if (line_end != std::string::npos) {
             line.assign(buffer_, 0, line_end);
             buffer_.erase(0, line_end + std::strlen(CRLF));
-            
+
             if (method.empty()) {
                 std::smatch match_results;
 
                 if (!std::regex_match(line, match_results, request_line_rx_g)) {
                     throw std::runtime_error("bad HTTP request: invalid request line: " + make_printable(line));
                 }
-                
+
                 method = match_results[1];
                 uri = match_results[2];
                 version = match_results[3];
-                
+
                 if (version != "HTTP/1.0" && version != "HTTP/1.1") {
                     throw std::runtime_error("bad HTTP request: invalid HTTP version: '" + version + "', only HTTP/1.0 and HTTP/1.1 are supported");
                 }
             }
             else {
                 std::smatch match_results;
-                
+
                 if (!std::regex_match(line, match_results, header_rx_g)) {
                     throw std::runtime_error("bad HTTP request: invalid header: " + make_printable(line));
                 }
-                
+
                 headers[match_results[1]] = match_results[2];
             }
         }
@@ -112,7 +112,7 @@ void HTTPRequestReader::morph_into_request() {
     if (method.empty()) {
         throw std::runtime_error("bad HTTP request: no request line received");
     }
-    
+
     if (method == "GET") {
         std::make_shared<GETRequestProcessor>(
             std::move(server_), std::move(socket_),

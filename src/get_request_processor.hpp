@@ -14,12 +14,12 @@ class GETRequestProcessor final
 {
 public:
     using HTTPRequestProcessor::HTTPRequestProcessor;
-    
+
     ~GETRequestProcessor();
-    
+
     void start();
     void stop() noexcept;
-    
+
 private:
     void send_response();
 

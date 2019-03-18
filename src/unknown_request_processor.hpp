@@ -14,15 +14,15 @@ class UNKNOWNRequestProcessor final
 {
 public:
     using HTTPRequestProcessor::HTTPRequestProcessor;
-    
+
     ~UNKNOWNRequestProcessor();
 
     void start();
     void stop() noexcept;
-    
+
 private:
     void send_response();
-    
+
 private:
     UNKNOWNRequestProcessorPtr self;
 };

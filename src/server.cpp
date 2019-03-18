@@ -42,7 +42,7 @@ bool Server::is_running() const {
 }
 
 const std::string Server::get_server_string() const {
-    return "ksgl-highload/0.0.1";
+    return "cpp-highload-server";
 }
 
 const std::string Server::get_index_file_name() const {

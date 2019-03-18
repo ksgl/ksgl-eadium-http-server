@@ -25,7 +25,7 @@ public:
 
     void start();
     void stop() noexcept;
-    
+
 private:
     void send_complete_response();
     void morph_into_request_reader();
@@ -53,7 +53,7 @@ public:
 
     void start();
     void stop() noexcept;
-    
+
 private:
     void fill_in_buffer();
     void flush_out_buffer();
