@@ -25,7 +25,7 @@ public:
 
     void start();
     void stop() noexcept;
-
+    
 private:
     void send_complete_response();
     void morph_into_request_reader();
@@ -53,7 +53,7 @@ public:
 
     void start();
     void stop() noexcept;
-
+    
 private:
     void fill_in_buffer();
     void flush_out_buffer();
@@ -64,17 +64,16 @@ private:
     HTTPStreamResponseWriterPtr self;
     boost::asio::posix::stream_descriptor stream_;
     const bool close_;
-    std::atomic<std::size_t> data_to_send_{0};
+    std::size_t data_to_send_ = 0;
 
     std::unique_ptr<boost::asio::strand<boost::asio::io_context::executor_type>> strand_;
-
     std::string in_buffer_;
     std::atomic<bool> in_closed_{false};
-    std::atomic<bool> in_overflown_{false};
+    std::atomic<bool> in_buffer_ready_{false};
 
     std::string out_buffer_;
     std::atomic<bool> out_closed_{false};
-    std::atomic<bool> out_starving_{false};
+    std::atomic<bool> out_buffer_ready_{false};
 
     static constexpr std::size_t max_in_buffer_size_ = 1 << 20; // 1 MB
 };

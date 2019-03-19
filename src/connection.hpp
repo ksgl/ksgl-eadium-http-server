@@ -2,8 +2,6 @@
 
 #include "server.hpp"
 
-#include <mutex>
-
 #include <boost/asio.hpp>
 
 
@@ -16,7 +14,6 @@ protected:
 
 protected:
     ServerPtr server_;
-    std::recursive_mutex mutex_;
     boost::asio::ip::tcp::socket socket_;
 };
 

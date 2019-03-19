@@ -11,7 +11,7 @@ const std::regex header_rx_g{R"(^(\S+):\s+(.*?)\s*$)", std::regex_constants::ECM
 std::string make_printable(const std::string& str) {
     constexpr std::size_t max_len = 1000;
     std::string result;
-
+    
     if (str.size() > max_len) {
         result = str.substr(0, max_len);
         result += "<truncated>";
@@ -19,14 +19,14 @@ std::string make_printable(const std::string& str) {
     else {
         result = str;
     }
-
-
-
+    
+    
+    
     // TODO: escape non-printable chars
-
-
-
-
+    
+    
+    
+    
     return result;
 }
 
@@ -45,7 +45,7 @@ std::string rfc_1123_now() {
     ::time_t t;
     ::time(&t);
     auto tm = ::gmtime(&t);
-
+    
     char buf[512] = { 0 };
     auto res = ::strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", tm);
     if (res <= 0) {
@@ -57,7 +57,7 @@ std::string rfc_1123_now() {
 
 std::string content_type(std::string ext) {
     boost::algorithm::to_lower(ext);
-
+    
     if (ext == ".htm" || ext == ".html") return "text/html";
     else if (ext == ".css") return "text/css";
     else if (ext == ".js") return "application/javascript";
@@ -66,7 +66,7 @@ std::string content_type(std::string ext) {
     else if (ext == ".gif") return "image/gif";
     else if (ext == ".swf") return "application/x-shockwave-flash";
     else if (ext == ".txt") return "text/plain";
-
+    
     return "application/octet-stream";
 }
 

@@ -42,7 +42,7 @@ bool Server::is_running() const {
 }
 
 const std::string Server::get_server_string() const {
-    return "cpp-highload-server";
+    return "ksgl-eadium-highload/0.0.1";
 }
 
 const std::string Server::get_index_file_name() const {
@@ -68,7 +68,7 @@ void Server::accept_next_connection() {
             }
             else {
                 auto self_sptr = self_wptr.lock();
-                if (self_sptr && self_sptr->is_running()) {
+                if (self_sptr && self_sptr->running_) {
                     self_sptr->accept_next_connection();
                     std::make_shared<HTTPRequestReader>(std::move(self_sptr), std::move(socket))->start();
                 }

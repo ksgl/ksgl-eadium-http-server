@@ -27,7 +27,7 @@ void UNKNOWNRequestProcessor::stop() noexcept {
 void UNKNOWNRequestProcessor::send_response() {
     const int code = 405;
     std::map<std::string, std::string> headers;
-
+    
     headers["Server"] = server_->get_server_string();
     headers["Connection"] = "close";
     headers["Date"] = rfc_1123_now();

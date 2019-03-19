@@ -44,26 +44,26 @@ void HTTPBufferResponseWriter::stop() noexcept {
 
 void HTTPBufferResponseWriter::send_complete_response() {
     boost::asio::async_write(socket_, boost::asio::buffer(buffer_),
-        [self_sptr = shared_from_this()] (boost::system::error_code ec, std::size_t bytes_transferred) {
+        [self_sptr = shared_from_this(), this] (boost::system::error_code ec, std::size_t bytes_transferred) {
             if (ec == boost::asio::error::operation_aborted) {
                 return;
             }
             else if (ec) {
                 std::clog << "Failed to write http response: " << ec.message() << std::endl;
-                self_sptr->stop();
+                stop();
             }
             else {
-                if (!self_sptr->close_) {
+                if (!close_) {
                     try {
-                        self_sptr->morph_into_request_reader();
+                        morph_into_request_reader();
                     }
                     catch (const std::exception& ex) {
                         std::clog << "Failed write http response: " << ex.what() << std::endl;
-                        self_sptr->stop();
+                        stop();
                     }
                 }
                 else {
-                    self_sptr->stop();
+                    stop();
                 }
             }
         }
@@ -86,7 +86,7 @@ HTTPStreamResponseWriter::HTTPStreamResponseWriter(
     strand_ = std::make_unique<boost::asio::strand<boost::asio::io_context::executor_type>>(socket_.get_executor());
 
     try {
-        data_to_send_ = boost::lexical_cast<std::size_t>(headers["Content-Length"]);
+        data_to_send_ = boost::lexical_cast<decltype(data_to_send_)>(headers["Content-Length"]);
     }
     catch (const boost::bad_lexical_cast&) {
     }
@@ -105,7 +105,6 @@ HTTPStreamResponseWriter::~HTTPStreamResponseWriter() {
 }
 
 void HTTPStreamResponseWriter::start() {
-    std::scoped_lock lock(mutex_);
     if (!self) {
         self = shared_from_this();
         fill_in_buffer();
@@ -114,7 +113,6 @@ void HTTPStreamResponseWriter::start() {
 }
 
 void HTTPStreamResponseWriter::stop() noexcept {
-    std::scoped_lock lock(mutex_);
     if (self) {
         boost::system::error_code ec;
         socket_.cancel(ec);
@@ -127,30 +125,33 @@ void HTTPStreamResponseWriter::stop() noexcept {
 }
 
 void HTTPStreamResponseWriter::fill_in_buffer() {
-    in_overflown_ = false;
+    in_buffer_ready_ = false;
     boost::asio::async_read(stream_, boost::asio::dynamic_buffer(in_buffer_, HTTPStreamResponseWriter::max_in_buffer_size_),
-        [self_sptr = shared_from_this()] (boost::system::error_code ec, std::size_t bytes_transferred) {
+        [self_sptr = shared_from_this(), this] (boost::system::error_code ec, std::size_t bytes_transferred) {
             if (ec == boost::asio::error::operation_aborted) {
-                return;
+                in_closed_ = true;
+                in_buffer_ready_ = true;
             }
             else if (ec) {
                 if (ec != boost::asio::error::eof) {
                     std::clog << "Failed to prepare http response: " << ec.message() << std::endl;
                 }
-                self_sptr->in_closed_ = true;
-                self_sptr->sync_streams();
+                in_closed_ = true;
+                in_buffer_ready_ = true;
+                sync_streams();
             }
-            else if (!self_sptr->server_->is_running() || self_sptr->out_closed_) {
-                self_sptr->in_closed_ = true;
-                self_sptr->sync_streams();
+            else if (!server_->is_running() || out_closed_) {
+                in_closed_ = true;
+                in_buffer_ready_ = true;
+                sync_streams();
             }
             else {
-                if (self_sptr->out_starving_ || self_sptr->in_buffer_.size() >= HTTPStreamResponseWriter::max_in_buffer_size_) {
-                    self_sptr->in_overflown_ = true;
-                    self_sptr->sync_streams();
+                if (in_buffer_.size() >= HTTPStreamResponseWriter::max_in_buffer_size_ || out_buffer_ready_) {
+                    in_buffer_ready_ = true;
+                    sync_streams();
                 }
                 else {
-                    self_sptr->fill_in_buffer();
+                    fill_in_buffer();
                 }
             }
         }
@@ -158,39 +159,43 @@ void HTTPStreamResponseWriter::fill_in_buffer() {
 }
 
 void HTTPStreamResponseWriter::flush_out_buffer() {
-    out_starving_ = false;
+    out_buffer_ready_ = false;
     boost::asio::async_write(socket_, boost::asio::dynamic_buffer(out_buffer_),
-        [self_sptr = shared_from_this()] (boost::system::error_code ec, std::size_t bytes_transferred) {
+        [self_sptr = shared_from_this(), this] (boost::system::error_code ec, std::size_t bytes_transferred) {
             if (ec == boost::asio::error::operation_aborted) {
-                return;
+                out_closed_ = true;
+                out_buffer_ready_ = true;
             }
             else if (ec) {
                 std::clog << "Failed to write http response: " << ec.message() << std::endl;
-                self_sptr->out_closed_ = true;
-                self_sptr->sync_streams();
+                out_closed_ = true;
+                out_buffer_ready_ = true;
+                sync_streams();
             }
-            else if (!self_sptr->server_->is_running()) {
-                self_sptr->out_closed_ = true;
-                self_sptr->sync_streams();
+            else if (!server_->is_running()) {
+                out_closed_ = true;
+                out_buffer_ready_ = true;
+                sync_streams();
             }
             else {
-                if (bytes_transferred > self_sptr->data_to_send_) {
-                    self_sptr->data_to_send_ = 0;
+                if (bytes_transferred > data_to_send_) {
+                    data_to_send_ = 0;
                 }
                 else {
-                    self_sptr->data_to_send_ -= bytes_transferred;
+                    data_to_send_ -= bytes_transferred;
                 }
 
-                if (self_sptr->data_to_send_ == 0) {
-                    self_sptr->out_closed_ = true;
-                    self_sptr->sync_streams();
+                if (data_to_send_ == 0) {
+                    out_closed_ = true;
+                    out_buffer_ready_ = true;
+                    sync_streams();
                 }
-                else if (self_sptr->out_buffer_.empty()) {
-                    self_sptr->out_starving_ = true;
-                    self_sptr->sync_streams();
+                else if (out_buffer_.empty()) {
+                    out_buffer_ready_ = true;
+                    sync_streams();
                 }
                 else {
-                    self_sptr->flush_out_buffer();
+                    flush_out_buffer();
                 }
             }
         }
@@ -199,32 +204,32 @@ void HTTPStreamResponseWriter::flush_out_buffer() {
 
 void HTTPStreamResponseWriter::sync_streams() {
     boost::asio::post(*strand_,
-        [self_sptr = shared_from_this()] () {
-            if (self_sptr->in_closed_ && self_sptr->out_closed_) {
-                if (self_sptr->data_to_send_ == 0 && !self_sptr->close_) {
+        [self_sptr = shared_from_this(), this] () {
+            if (in_closed_ && out_closed_) {
+                if (data_to_send_ == 0 && !close_) {
                     try {
-                        self_sptr->morph_into_request_reader();
+                        morph_into_request_reader();
                     }
                     catch (const std::exception& ex) {
                         std::clog << "Failed write http response: " << ex.what() << std::endl;
-                        self_sptr->stop();
+                        stop();
                     }
                 }
                 else {
-                    self_sptr->stop();
+                    stop();
                 }
             }
             else if (
-                     (!self_sptr->out_closed_ && self_sptr->out_starving_) &&
-                     (self_sptr->in_overflown_ || self_sptr->in_closed_) &&
-                     self_sptr->out_buffer_.empty() && !self_sptr->in_buffer_.empty()
+                     (!out_closed_ && out_buffer_ready_) &&
+                     (in_closed_ || in_buffer_ready_) &&
+                     out_buffer_.empty() && !in_buffer_.empty()
             ) {
-                self_sptr->out_buffer_.swap(self_sptr->in_buffer_);
+                out_buffer_.swap(in_buffer_);
 
-                self_sptr->flush_out_buffer();
+                flush_out_buffer();
 
-                if (!self_sptr->in_closed_) {
-                    self_sptr->fill_in_buffer();
+                if (!in_closed_) {
+                    fill_in_buffer();
                 }
             }
         }

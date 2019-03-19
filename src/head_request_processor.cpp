@@ -40,7 +40,7 @@ void HEADRequestProcessor::send_response() {
         try {
             auto abs_doc_root = boost::filesystem::canonical(server_->get_doc_root());
             auto path = abs_doc_root / decoded_file_path;
-
+            
             if (!boost::filesystem::exists(path)) {
                 code = 404;
             }
@@ -53,7 +53,7 @@ void HEADRequestProcessor::send_response() {
                     if (boost::filesystem::is_directory(path)) {
                         path = path / server_->get_index_file_name();
                     }
-
+                    
                     if (!boost::filesystem::exists(path)) {
                         code = 404;
                     }

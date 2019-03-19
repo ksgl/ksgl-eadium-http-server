@@ -66,12 +66,7 @@ int main(int argc, const char* argv[]) {
         parser.parse_config();
         Settings* cfg = parser.get_setting();
 
-        // const std::uint16_t port = 80;
-        // const std::size_t cpu_limit = 4;
-        // const std::string document_root = "/var/www/html";
-
-        const auto thread_pool_size = std::min<std::size_t>(std::thread::hardware_concurrency(),
-            size_t(cfg->cpu_limit));
+        const auto thread_pool_size = std::min<std::size_t>(std::thread::hardware_concurrency(), cfg->cpu_limit);
 
         boost::asio::io_context io_context(thread_pool_size); // даем подсказу io_context-у во скольких тредах его будем run()
 
@@ -88,7 +83,9 @@ int main(int argc, const char* argv[]) {
             }
         );
 
-        std::clog << "Start listening on port 80" << std::endl;
+        std::clog << "cpu_limit: " << cfg->cpu_limit << std::endl;
+        std::clog << "Start listening on port " << cfg->port << std::endl;
+
         server->start();
 
         IOContextThreadPoolRunner(thread_pool_size, io_context);
